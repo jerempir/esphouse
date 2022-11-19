@@ -50,7 +50,7 @@ struct_message setmessage;
 struct_message recv;
 connect My_con(mymacID, 6);//Теперь уровень сигнала можно настроить при создании
 
-uint8_t macFromid(int id){
+uint8_t macFromid(int id){  //из id выдаёт порядковый номер в списке мак адресов всех нод.
   for (uint8_t i=0;i<len1;i++){
     if (id == macadrrs[i][0]){
       return i;
@@ -69,7 +69,7 @@ uint8_t* macFromid2(int id){
 }
 
 
-void scanNetwork(int networksFound)
+void scanNetwork(int networksFound)   // Вызывается из функции WiFi.scanNetworkAsync(), цикл в цикле сравнений мак адресов всех сетей с мак адресами всех нод 
 {
   std::vector<uint8_t> netmac;
   Serial.println("found nets");
@@ -77,7 +77,7 @@ void scanNetwork(int networksFound)
   for (int i = 0; i < networksFound; i++)
   {
     netmac.assign(WiFi.BSSID(i), WiFi.BSSID(i) + 6);
-    netmac[0]-=2;
+    netmac[0]-=2; // softap мак адрес наших плат на два больше чем классический station mac
     for (int j=0;j<aliveAllnode.size();j++){
       int k = macFromid(aliveAllnode[j]);
       if (macadrrs[k] == netmac){
@@ -87,7 +87,7 @@ void scanNetwork(int networksFound)
   }
 }
 
-void scanNetwork0(int networksFound)
+void scanNetwork0(int networksFound) // Такая же функция как и выше, но используется в начале для поиска платы среди всех а не живых к кторой подключиться.
 {
   std::vector<uint8_t> netmac;
   //Serial.println("found nets");
@@ -108,7 +108,7 @@ void scanNetwork0(int networksFound)
   }
 }
 
-void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
+void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) { //функция вызывается при каждой отправке, может знать дошло смс до получателя или нет
   boolsendStatus = sendStatus;
   Serial.print("Last Packet Send Status: ");
   if (sendStatus == 0){
@@ -119,11 +119,11 @@ void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
   }
 }
 
-uint8_t foundnode(){
+uint8_t foundnode(){ //Функция ищет ноду с наименьшим rssi для подключения к ней этап 1.1
   uint8_t minrssi = 255;
   int currentid = 0;
   Serial.println("starting scaning network");
-  WiFi.scanNetworksAsync(scanNetwork0);
+  WiFi.scanNetworksAsync(scanNetwork0); //scanNEtwork0 вызывается после этой функции.
   for (auto i:localRssi){
     if(abs(i.second) < minrssi){
         minrssi = i.second;
@@ -135,12 +135,13 @@ uint8_t foundnode(){
  //  Serial.print(i.first);
  //  Serial.print(i.second);
  //}
+ Serial.println("ending scaning network");
   localRssi.clear();
   return currentid;
 }
 
 
-int main() {                              
+int main() {      //функция переконфигурации сети                         
     struct_message send;
     std::cout << "Hello, I am " + std::to_string(My_con.getId()) + "!" << std::endl << std::endl;
 
@@ -240,7 +241,7 @@ int main() {
 }
 
 
-void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
+void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {  // функция вызывается при получении, для каждого типа смс свой сценарий
   memcpy(&recv, incomingData, sizeof(recv));
   if (recv.message_type == 11){      //ТИП 11
     nodeid = recv.from[0];
