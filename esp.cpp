@@ -29,10 +29,10 @@ uint8_t mmac[6];
 std::vector<uint8_t> myMac;
 //std::string AP_SSID = "node " + std::to_string(myMac[0]);
 int mymacID;
-std::vector<std::vector<uint8_t>> macadrrs = {{0xBC, 0xDD, 0xC2, 0x26, 0x74, 0x97},{0xCC, 0x50, 0xE3, 0x35, 0x19, 0x09}};
+std::vector<std::vector<uint8_t>> macadrrs = {{0xCC, 0x50, 0xE3, 0x35, 0x19, 0x09},{0xBC, 0xDD, 0xC2, 0x26, 0x74, 0x97}};
 const uint8_t len1 = macadrrs.size();
 const uint8_t len2 = 6;
-std::vector<int> arrayAllNode(len1);
+std::vector<int> IdAllNode(len1);
 std::vector<int>aliveAllnode;
 std::vector<std::pair<id, int>> localRssi;
 std::vector<std::vector<std::pair<id, int>>> SignalStrenghtInNode;
@@ -46,7 +46,7 @@ typedef struct struct_message {
     std::vector<std::pair<id, int>> nodeRssi;
 } struct_message;
 
-struct_message setmessage;
+
 struct_message recv;
 connect My_con(mymacID, 6);//Теперь уровень сигнала можно настроить при создании
 
@@ -99,10 +99,10 @@ void scanNetwork0(int networksFound) // Такая же функция как и
     Serial.println(WiFi.RSSI(i));
     netmac.assign(WiFi.BSSID(i), WiFi.BSSID(i) + 6);
     netmac[0]-=2;
-    for (int j=0;j<arrayAllNode.size();j++){
-      int k = macFromid(arrayAllNode[j]);
+    for (int j=0;j<IdAllNode.size();j++){
+      int k = macFromid(IdAllNode[j]);
       if (macadrrs[k] == netmac){
-        localRssi.push_back(std::make_pair(arrayAllNode[j],WiFi.RSSI(i)));
+        localRssi.push_back(std::make_pair(IdAllNode[j],WiFi.RSSI(i)));
     }
     }
   }
@@ -119,11 +119,34 @@ void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) { //функция выз
   }
 }
 
+uint8_t foundnode0(){ //Функция ищет ноду с наименьшим rssi для подключения к ней этап 1.1
+  uint8_t minrssi = 255;
+  int currentid = 0;
+  Serial.println("starting scaning network");
+  int n = WiFi.scanNetworks(false, true);
+  scanNetwork0(n);
+  for (auto i:localRssi){
+    if(abs(i.second) < minrssi){
+        minrssi = i.second;
+        currentid = i.first;
+}
+}
+ //for (auto i:localRssi){
+ //  Serial.println("pair: ");
+ //  Serial.print(i.first);
+ //  Serial.print(i.second);
+ //}
+  Serial.println("ending scaning network");
+  localRssi.clear();
+  return currentid;
+}
 uint8_t foundnode(){ //Функция ищет ноду с наименьшим rssi для подключения к ней этап 1.1
   uint8_t minrssi = 255;
   int currentid = 0;
   Serial.println("starting scaning network");
-  WiFi.scanNetworksAsync(scanNetwork0); //scanNEtwork0 вызывается после этой функции.
+  //WiFi.scanNetworksAsync(scanNetwork0); //scanNEtwork0 вызывается после этой функции.
+  int n = WiFi.scanNetworks(false, true);
+  scanNetwork(n);
   for (auto i:localRssi){
     if(abs(i.second) < minrssi){
         minrssi = i.second;
@@ -139,7 +162,6 @@ uint8_t foundnode(){ //Функция ищет ноду с наименьшим 
   localRssi.clear();
   return currentid;
 }
-
 
 int main() {      //функция переконфигурации сети                         
     struct_message send;
@@ -166,9 +188,9 @@ int main() {      //функция переконфигурации сети
       for (auto neibour_node:macadrrs){ // Идём по всем платам ибо не знаем сигнал соседей. Есть начальная точка и конечная. 
         Serial.println("send with help of node= ");
         Serial.print((int)neibour_node[0]);
-        timer = millis();
-        esp_now_send(&neibour_node[0], (uint8_t *) &send, sizeof(send)); //Если сообщение перешлётся на конечную, та вернет сообщение тип 3.
-        while (millis() - timer < 5000){}
+        
+        esp_now_send(&neibour_node[0], (uint8_t *) &send, sizeof(send)); //Если сообщение перешлётся на конечную, та вернет сообщение тип 13.
+        delay(5000);
         if (recvBool == true){ //если наша плата получила сообщение типа 3 и является конечной точкой она сделает bool = true, мы это увидим тут.
             Serial.print("recvbool = True, alive node = ");
             Serial.print(iter_node);
@@ -213,7 +235,7 @@ int main() {      //функция переконфигурации сети
             auto k = macFromid(node);
             timer = millis();
             esp_now_send(&macadrrs[k][0], (uint8_t *) &send, sizeof(send)); 
-            while (millis() - timer < 6000){}
+            delay(6000);
           }
 
             //std::cout << "Get signal strenghts from node: " << iteration_node << std::endl;
@@ -246,7 +268,7 @@ void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {  // фун�
   if (recv.message_type == 11){      //ТИП 11
     nodeid = recv.from[0];
     Serial.print("recived message 11 from ");
-    Serial.print((int)recv.from[0]);
+    Serial.print(nodeid);
     Serial.println("starting main() process");
     Serial.println();
     //macadrrs.push_back(recv.from);
@@ -332,6 +354,7 @@ void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {  // фун�
             esp_now_send(&macadrrs[k][0],(uint8_t *) &send,sizeof(send));
           }
     }
+    
     else {
       Serial.println("message 21 is not for me, sending others:");
       for (auto lavanode:aliveAllnode){ // Лавинный проход по всем нодам в поисках Конечной ноды код сообщения 22
@@ -384,9 +407,10 @@ void setup() {
   uint8_t sendnode = 0;
   WiFi.macAddress(mmac);
   myMac.assign(mmac,mmac+6);
-  mymacID = myMac[1];
+  mymacID = myMac[0];
+  Serial.println(mymacID);
   for (i=0; i<len1;i++){ // Заполняем массив ID плат
-  arrayAllNode[i] = macadrrs[i][0];
+  IdAllNode[i] = macadrrs[i][0];
   }
 
   if (esp_now_init() != 0) {
@@ -399,12 +423,14 @@ void setup() {
   esp_now_register_send_cb(OnDataSent);
   esp_now_register_recv_cb(OnDataRecv);
 
-  for (i=1;i<len1;i++) {
+  for (i=0;i<len1;i++) {
+    if (macadrrs[i][0] != mymacID){
     esp_now_add_peer(&macadrrs[i][0],ESP_NOW_ROLE_COMBO, CHANNEL,NULL,0);
+    }
   }
-
-  setmessage.from = myMac;
-  setmessage.message_type = 11;
+  struct_message setupmessage;
+  setupmessage.from = myMac;
+  setupmessage.message_type = 11;
   Serial.println();
   Serial.println("Trying to find some nodes to connect");
 //  do{
@@ -423,26 +449,17 @@ void setup() {
 //}
 //while(sendnode==0);
 //}
-  sendnode = foundnode();
-  Serial.println("first");
-  Serial.println(sendnode);
-  sendnode = foundnode();
-  Serial.println("second");
-  Serial.println(sendnode);
-  sendnode = foundnode();
-  delay(8000);
-  Serial.println("third");
+  sendnode = foundnode0();
   Serial.println(sendnode);
   if (sendnode != 0){
   Serial.println("found some node,id: ");
   Serial.println(sendnode);
   auto k = macFromid(sendnode);
-  esp_now_send(&macadrrs[k][0],(uint8_t *) &setmessage, sizeof(setmessage));
+  esp_now_send(&macadrrs[k][0],(uint8_t *) &setupmessage, sizeof(setupmessage));
 }
  Serial.print(sendnode);
 
  }
-
 
 
 void loop() {
