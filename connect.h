@@ -30,8 +30,8 @@ using vertex = int;
 //Ассоциативный контейнер для id и номера вершины для поиска в глубину далее dict
 
 class connect {
-    int INT_MAX_SIGNAL = 70;
-    int INT_MAX = 1000000;
+    int MY_INT_MAX_SIGNAL = 70;
+    int MY_INT_MAX = 1000000;
 
     id my_id;                                                       // Задание id
     std::queue <id> all_stren;                                      // Все узлы, доступные в сети
@@ -58,7 +58,7 @@ class connect {
     }
 
 public:
-    connect(id _my_id, int sign_threshold): my_id(_my_id), INT_MAX_SIGNAL(sign_threshold) {  }
+    connect(id _my_id, int sign_threshold): my_id(_my_id), MY_INT_MAX_SIGNAL(sign_threshold) {  }
 
     id getId() {                                                    // Возвращает id данного узла
         return my_id;
@@ -189,7 +189,7 @@ public:
 //            std::cout <<    std::endl;
 //        }
 
-        std::vector<int> D(n, INT_MAX),  p(n);
+        std::vector<int> D(n, MY_INT_MAX),  p(n);
         D[st] = 0;
         std::vector<char> u(n);
         for (int i=0; i<n; ++i) {
@@ -197,7 +197,7 @@ public:
             for (int j=0; j<n; ++j)
                 if (!u[j] && (v == -1 || D[j] < D[v]))
                     v = j;
-            if (D[v] == INT_MAX)
+            if (D[v] == MY_INT_MAX)
                 break;
             u[v] = true;
 
@@ -211,7 +211,7 @@ public:
                 }*/
                 int to = G[v]->at(j).first,
                     len = G[v]->at(j).second;
-                if (len>=INT_MAX_SIGNAL) continue;
+                if (len>=MY_INT_MAX_SIGNAL) continue;
                 if (D[v] + len < D[to]) {
                     D[to] = D[v] + len;
                     p[to] = v;
@@ -229,7 +229,7 @@ public:
             std::reverse(path.begin(), path.end());
             //for (int j = 0; j < path.size(); ++j) std::cout << search_map(&dict, path[j]) << " -> ";                  //todo DEBUG
 //            std::cout << "#" << D[i] << std::endl;
-            if (D[i]<INT_MAX) {
+            if (D[i]<MY_INT_MAX) {
                 next_node[search_map(&dict, i)] = search_map(&dict, path[1]);
             } else {
                 next_node[search_map(&dict, i)] = -1;
