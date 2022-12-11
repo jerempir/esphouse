@@ -481,10 +481,8 @@ void setup()
 
   for (int i = 0; i < myMac.size(); ++i)
     Serial.print(String(myMac[i]) + ":");
-  /******************************************************************/
 
-  //for (int i = 0; i < AllNodeID; i++) // Заполняем массив ID плат
-  //  IdAllNode[i] = AllNodeMacAdr[i][0];
+  /******************************************************************/
 
   if (esp_now_init() != 0) {
     Serial.println("Error initializing ESP-NOW");
@@ -499,32 +497,38 @@ void setup()
     if (AllNodeID[i] != mymacID)
       esp_now_add_peer(idToArray(AllNodeID[i]), ESP_NOW_ROLE_COMBO, CHANNEL, NULL, 0);
 
+  Serial.println();
+  Serial.println("HERE 1");
+
+  delay(500);
+
+  Serial.println();
+  Serial.println("HERE 2");
+
   struct_message setupmessage;
   setupmessage.from = mymacID;
   setupmessage.message_type = 11;
-  Serial.println();
-  Serial.println("Trying to find some nodes to connect");
-  //  do{
-  //  sendnode = findIDMinimalRSSI();
-  //  Serial.println();
-  //  if (sendnode != 0){
-  //  Serial.println("found some node,id: ");
-  //  Serial.println(sendnode);
-  //  auto k = macPosFromID(sendnode);
-  //  while (boolsendStatus == true){
-  //  esp_now_send(&AllNodeMacAdr[k][0],(uint8_t *) &setmessage, sizeof(setmessage));
-  //  delay(3000);
-  //  }
-  //  }
-  // delay(3000);
-  //}
-  // while(sendnode==0);
-  //}
-  uint64_t sendnode = 0;
-  int num_of_device = WiFi.scanNetworks(false, true);
-  sendnode = foundnode(num_of_device);
 
+  delay(500);
+
+  Serial.println();
+  Serial.println("HERE 3");
+    
+  
+  //uint64_t sendnode = 0;
+  int num_of_device = WiFi.scanNetworks();
+
+  delay(500);
+  Serial.println();
+  Serial.println("HERE 4");
+  uint64_t sendnode = foundnode(num_of_device);
+
+  delay(500);
+  Serial.println();
+  Serial.println("HERE 5");
   Serial.println(sendnode);
+  delay(1000);
+
   setupmessage.to = sendnode;
   
   esp_now_send(idToArray(sendnode), (uint8_t *)&setupmessage, sizeof(setupmessage));
