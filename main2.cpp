@@ -37,11 +37,12 @@ uint64_t mymacID;
 std::vector<std::vector<uint8_t>> AllNodeMacAddr = {{44, 244, 50, 18, 214, 245}, {44, 244, 50, 18, 197, 196}};
 
 
-std::vector<uint64_t> AllNodeID = {(((((44 * 256) + 244) * 256 + 50) * 256 + 18) * 256 + 214) * 256 + 245,
-                                 (((((44 * 256) + 244) * 256 + 50) * 256 + 18) * 256 + 197) * 256 + 196};
+std::vector<uint64_t> AllNodeID = {(((((uint64_t)(44 * 256) + 244) * 256 + 50) * 256 + 18) * 256 + 214) * 256 + 245,
+                                 (((((uint64_t)(44 * 256) + 244) * 256 + 50) * 256 + 18) * 256 + 197) * 256 + 196};
 
-uint8_t ( &idToArray (uint64_t id)) [6] {         // сложная конструкция для возврата массива из 6 uint8_t
-  uint8_t MacAddress[6];
+//uint8_t ( &idToArray (uint64_t id)) [6] {         // сложная конструкция для возврата массива из 6 uint8_t
+std::vector <uint8_t> idToArray (uint64_t id){
+  std::vector <uint8_t> MacAddress(6);
   for (int i=0; i<6; ++i){
     MacAddress[5-i] = id % 256;
     id/=256;
@@ -49,8 +50,8 @@ uint8_t ( &idToArray (uint64_t id)) [6] {         // сложная констр
   return MacAddress;
 }
 
-uint64_t ArrayToID(uint8_t MacAddress[6]){
-  return (((((MacAddress[0] * 256) + MacAddress[1]) * 256 + MacAddress[2]) * 256 + MacAddress[3]) * 256
+uint64_t ArrayToID(uint8_t MacAddress[6]) {
+  return (((((uint64_t)(MacAddress[0] * 256) + MacAddress[1]) * 256 + MacAddress[2]) * 256 + MacAddress[3]) * 256
     + MacAddress[4]) * 256 + MacAddress[5];
 }
 
@@ -147,27 +148,42 @@ uint64_t foundnode(int networksFound) {
   Serial.print("   Сканирование всех доступных сетей: ");
   Serial.print(networksFound);
   Serial.println("штук");
+
   uint8_t minRSSI = 255;
   uint64_t minID = 0;
   
   for (int i = 0; i < networksFound; i++)  {
-    std::vector<uint8_t> netmac(0);
+    std::vector <uint8_t> netmac;
     netmac.assign(WiFi.BSSID(i), WiFi.BSSID(i) + 6);
     netmac[0] -= 2; // softap мак адрес наших плат на два больше чем классический station mac
-    
+//    Serial.println(ArrayToID(netmac.data()));
+//    Serial.print(AllNodeID[0]);
+//    Serial.print("<---->");
+//    Serial.println(AllNodeID[1]);
+
     int indexInAll = getIndex(AllNodeID, ArrayToID(netmac.data()));
 //    int indexInAval = getIndex(AllAvaliableNodeID, ArrayToID(netmac.data()));
+    //for (int j=0; j<6; ++j){
+    //  Serial.print(netmac.data()[j]);
+    //  Serial.print(".");   
+    //}
+//    Serial.println();
+//    Serial.println(indexInAll);
     
     if (indexInAll != -1 and abs(WiFi.RSSI(i)) < minRSSI) {
+
       minID = ArrayToID(netmac.data());
       minRSSI = abs(WiFi.RSSI(i));
     }
   }
 
+  
+
   Serial.print("Оптимальный: ");
-  Serial.println(ArrayMACToString(idToArray(minID)));
-  return minID;
+  Serial.println(ArrayMACToString(idToArray(minID).data()));
   Serial.println("--------------------------------------");  
+  delay(1000);
+  return minID;
 }
 
 /*
@@ -259,7 +275,7 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
   if (recv.message_type == 11) {
     uint64_t incomingID = recv.from;
     Serial.print("Этап 1.1, ко мне хочет добавиться ");
-    Serial.println(ArrayMACToString(idToArray(incomingID)));
+    Serial.println(ArrayMACToString(idToArray(incomingID).data()));
     Serial.println("Запускаем прикол с моим кодом ()");
     Serial.println();
     // AllNodeMacAdr.push_back(recv.from);
@@ -281,28 +297,28 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
       send.message_type = 13;
 
       Serial.print("Отправляю ответ на ");
-      Serial.println(ArrayMACToString(idToArray(send.to)));
+      Serial.println(ArrayMACToString(idToArray(send.to).data()));
       Serial.println("    Через: ");
 
       for (auto neibour_node : AllAvaliableNodeID)          //TODO Уточнить, кому должны рассылать
       { // Идём по всем платам ибо не знаем сигнал соседей. Есть начальная точка и конечная.
         Serial.print("    ");
-        Serial.print(ArrayMACToString(idToArray(neibour_node)));
+        Serial.print(ArrayMACToString(idToArray(neibour_node).data()));
         
-        esp_now_send(idToArray(neibour_node), (uint8_t *)&send, sizeof(send));
+        esp_now_send(idToArray(neibour_node).data(), (uint8_t *)&send, sizeof(send));
       }
     } else {
       Serial.println("И я НЕ конечный пункт назначения");
       Serial.print("Отправляю ответ на ");
-      Serial.println(ArrayMACToString(idToArray(recv.to)));
+      Serial.println(ArrayMACToString(idToArray(recv.to).data()));
       Serial.println("    Через: ");
 
       for (auto neibour_node : AllAvaliableNodeID)          //TODO Уточнить, кому должны рассылать
       { // Идём по всем платам ибо не знаем сигнал соседей. Есть начальная точка и конечная.
         Serial.print("    ");
-        Serial.print(ArrayMACToString(idToArray(neibour_node)));
+        Serial.print(ArrayMACToString(idToArray(neibour_node).data()));
 
-        esp_now_send(idToArray(neibour_node), (uint8_t *)&recv, sizeof(recv)); // Если сообщение перешлётся на конечную, та вернет сообщение тип 13.
+        esp_now_send(idToArray(neibour_node).data(), (uint8_t *)&recv, sizeof(recv)); // Если сообщение перешлётся на конечную, та вернет сообщение тип 13.
       }
     }
   }
@@ -314,22 +330,22 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
 
     if (mymacID == recv.to) {
       Serial.print("Ответ пришел мне! Узел ");
-      Serial.print(ArrayMACToString(idToArray(recv.from)));
+      Serial.print(ArrayMACToString(idToArray(recv.from).data()));
       Serial.println(" жив!!!");
       
       recvBool = true;
     } else {
       Serial.print("Я лишь посредник(. Пересылаю на узел: ");
-      Serial.println(ArrayMACToString(idToArray(recv.to)));
+      Serial.println(ArrayMACToString(idToArray(recv.to).data()));
 
       Serial.println("    Через: ");
 
       for (auto neibour_node : AllAvaliableNodeID)          //TODO Уточнить, кому должны рассылать
       { // Идём по всем платам ибо не знаем сигнал соседей. Есть начальная точка и конечная.
         Serial.print("    ");
-        Serial.print(ArrayMACToString(idToArray(neibour_node)));
+        Serial.print(ArrayMACToString(idToArray(neibour_node).data()));
 
-        esp_now_send(idToArray(neibour_node), (uint8_t *)&recv, sizeof(recv)); // Если сообщение перешлётся на конечную, та вернет сообщение тип 13.
+        esp_now_send(idToArray(neibour_node).data(), (uint8_t *)&recv, sizeof(recv)); // Если сообщение перешлётся на конечную, та вернет сообщение тип 13.
       }
     }
   }
@@ -348,7 +364,7 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
       AllAvaliableNodeID = recv.allnode;
       for (auto &i: AllAvaliableNodeID){
         Serial.print("    ");
-        Serial.println(ArrayMACToString(idToArray(i)));
+        Serial.println(ArrayMACToString(idToArray(i).data()));
       }
       
       struct_message send;
@@ -377,14 +393,14 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
           send.to = node;
           
           Serial.print("    отсылаю: ");
-          Serial.println(ArrayMACToString(idToArray(node)));
+          Serial.println(ArrayMACToString(idToArray(node).data()));
           
           for (auto &lavanode : AllAvaliableNodeID) {           // 
              // Лавинный проход по всем нодам в поисках Конечной ноды код сообщения 22
             //uint8_t k = macPosFromID(lavanode);
             //Serial.println("sending 22 with help of node = ");
             //Serial.print(lavanode);
-            esp_now_send(idToArray(lavanode), (uint8_t *)&send, sizeof(send));
+            esp_now_send(idToArray(lavanode).data(), (uint8_t *)&send, sizeof(send));
           }
         }
         delay(2000);
@@ -400,7 +416,7 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
         //uint8_t k = macPosFromID(lavanode);
         //Serial.println("sending 22 iniziator with help of node = ");
         //Serial.println(lavanode);
-        esp_now_send(idToArray(lavanode), (uint8_t *)&send, sizeof(send));
+        esp_now_send(idToArray(lavanode).data(), (uint8_t *)&send, sizeof(send));
       }
     } else {
       Serial.println("Сообщение с массивом не мне, рассылаю всем");
@@ -409,7 +425,7 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
         //uint8_t k = macPosFromID(lavanode);
         //Serial.println("send to node = ");
         //Serial.print(lavanode);
-        esp_now_send(idToArray(lavanode), (uint8_t *)&recv, sizeof(recv));
+        esp_now_send(idToArray(lavanode).data(), (uint8_t *)&recv, sizeof(recv));
       }
     }
   } else if (recv.message_type == 22 and recv.transid != LastMessageId) { // ТИП 22
@@ -437,7 +453,7 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
       
       //SignalStrenghtInNode.push_back(recv.nodeRssi); // принимаем пары от платы, заполняем в класс My con
       Serial.print("Добавляю в массив RSSI от ");
-      Serial.println(ArrayMACToString(idToArray(recv.from)));
+      Serial.println(ArrayMACToString(idToArray(recv.from).data()));
 
       My_con->setSignStren(&recv.nodeRssi, recv.from);
       
@@ -451,7 +467,7 @@ void OnDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
       //  uint8_t k = macPosFromID(lavanode);
       //  Serial.println("Send 22 mess to: ");
       //  Serial.print(lavanode);
-        esp_now_send(idToArray(lavanode), (uint8_t *)&recv, sizeof(recv));
+        esp_now_send(idToArray(lavanode).data(), (uint8_t *)&recv, sizeof(recv));
       }
     }
   }
@@ -465,7 +481,7 @@ void setup()
   Serial.begin(115200);
   delay(100);
   Serial.println();
-  Serial.print("HELLO FROM NODE ttyUSB0 with ID: ");
+  Serial.println("HELLO FROM NODE ttyUSB0 with ID: ");
   delay(100);
 
   /******************************************************************/
@@ -495,44 +511,24 @@ void setup()
 
   for (int i = 0; i < AllNodeID.size(); i++)
     if (AllNodeID[i] != mymacID)
-      esp_now_add_peer(idToArray(AllNodeID[i]), ESP_NOW_ROLE_COMBO, CHANNEL, NULL, 0);
-
-  Serial.println();
-  Serial.println("HERE 1");
-
-  delay(500);
-
-  Serial.println();
-  Serial.println("HERE 2");
+      esp_now_add_peer(idToArray(AllNodeID[i]).data(), ESP_NOW_ROLE_COMBO, CHANNEL, NULL, 0);
 
   struct_message setupmessage;
   setupmessage.from = mymacID;
   setupmessage.message_type = 11;
-
-  delay(500);
-
-  Serial.println();
-  Serial.println("HERE 3");
-    
   
   //uint64_t sendnode = 0;
+  
   int num_of_device = WiFi.scanNetworks();
-
-  delay(500);
-  Serial.println();
-  Serial.println("HERE 4");
   uint64_t sendnode = foundnode(num_of_device);
-
-  delay(500);
-  Serial.println();
-  Serial.println("HERE 5");
-  Serial.println(sendnode);
-  delay(1000);
+  //while ( sendnode == 0) {
+  //  num_of_device = WiFi.scanNetworks();
+  //  sendnode = foundnode(num_of_device);
+  //}
 
   setupmessage.to = sendnode;
   
-  esp_now_send(idToArray(sendnode), (uint8_t *)&setupmessage, sizeof(setupmessage));
-  Serial.print(sendnode);
+  esp_now_send(idToArray(sendnode).data(), (uint8_t *)&setupmessage, sizeof(setupmessage));
 }
 
 void loop()
