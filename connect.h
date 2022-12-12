@@ -1,4 +1,4 @@
-/* v:1.02
+/* v:1.03
  * ☠☠☠ ACHTUNG MINES ☠☠☠
  *
  * C Nuestro que estas en la Memoria,
@@ -15,8 +15,8 @@
  */
 
 
-//#ifndef ALG_CONNECT_H
-//#define ALG_CONNECT_H
+#ifndef ALG_CONNECT_H
+#define ALG_CONNECT_H
 
 #include <queue>
 #include <vector>
@@ -31,10 +31,11 @@ using vertex = int;
 //Ассоциативный контейнер для id и номера вершины для поиска в глубину далее dict
 
 class connect {
-    sgnlstr MY_INT_MAX_SIGNAL = 70;
+    sgnlstr MY_INT_MAX_SIGNAL;
+    id my_id;                                                       // Задание id
+
     int MY_INT_MAX = 1000000;
 
-    id my_id = 0;                                                       // Задание id
     std::queue <id> all_stren;                                      // Все узлы, доступные в сети
     //std::queue <id> all_stren_help;                               // Все узлы, доступные в сети
     std::map <id, vertex> dict;                                     // Ассоциативный контейнер для id и номера вершины для поиска в глубину
@@ -68,15 +69,17 @@ public:
 
     // Возвращает вектор <id, уровень сигнала для узлов, которые он видит>
     std::vector <id> getNodeInNet() {
-        std::vector <id> ulala;
+        std::vector <id> ulala(0, 0);
 
-        id start = all_stren.front();
+        if (all_stren.size()) {
+            id start = all_stren.front();
 
-        do {
-            ulala.push_back( all_stren.front());
-            all_stren.push(all_stren.front());
-            all_stren.pop();
-        } while (start != all_stren.front());
+            do {
+                ulala.push_back( all_stren.front());
+                all_stren.push(all_stren.front());
+                all_stren.pop();
+            } while (start != all_stren.front());
+        }
 
         return ulala;
     }
@@ -155,7 +158,6 @@ public:
     // Отослал в синхронном режиме до всех узлов, Master-узел(узел
     //   затеявший переконфигурацию) получает список последним
     id getNextToSendRequest() {
-
 
         if (!check_first_node) {
             first_node = all_stren.front();
@@ -270,4 +272,4 @@ public:
     }
 };
 
-//#endif //ALG_CONNECT_H
+#endif //ALG_CONNECT_H
