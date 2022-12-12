@@ -1,4 +1,4 @@
-/*
+/* v:1.01
  * ☠☠☠ ACHTUNG MINES ☠☠☠
  *
  * C Nuestro que estas en la Memoria,
@@ -15,8 +15,8 @@
  */
 
 
-#ifndef ALG_CONNECT_H
-#define ALG_CONNECT_H
+//#ifndef ALG_CONNECT_H
+//#define ALG_CONNECT_H
 
 #include <queue>
 #include <vector>
@@ -24,13 +24,14 @@
 #include <vector>
 #include <algorithm>
 
-using id = int;
+using id = uint64_t;
+using sgnlstr = uint8_t;
 using vertex = int;
 
 //Ассоциативный контейнер для id и номера вершины для поиска в глубину далее dict
 
 class connect {
-    int MY_INT_MAX_SIGNAL = 70;
+    sgnlstr MY_INT_MAX_SIGNAL = 70;
     int MY_INT_MAX = 1000000;
 
     id my_id;                                                       // Задание id
@@ -41,57 +42,60 @@ class connect {
 
     id indicator = -1;
 
-    int index = 0;
+    vertex index = 0;                                               // количество вершин (оно же - максимальный индекс вершины
     id first_node = -1;                                             // Вспомонательная пеменная, обозгначающая первый элемент в очереди (флаг остановки)
     bool check_first_node = false;
 
     //std::vector <int> visited;
 
-    std::vector< std::vector <std::pair<vertex, int>> *> G;         // (id, sig_stren)
+    std::vector< std::vector <std::pair<vertex, sgnlstr>> *> G;         // (id, sig_stren)
     bool check_resize = false;
 
-    id search_map(std::map<int, int> *my_map, int value){
-        for (auto it = my_map->begin(); it != my_map->end(); ++it)
-            if (it->second == value)
-                return it->first;
+    static id search_map(std::map<id, vertex> *my_map, vertex vertex_to_find){
+        for (auto & it : *my_map)
+            if (it.second == vertex_to_find)
+                return it.first;
         return -1;
     }
 
 public:
-    connect(id _my_id, int sign_threshold): my_id(_my_id), MY_INT_MAX_SIGNAL(sign_threshold) {  }
+    connect(id _my_id, sgnlstr sign_threshold): my_id(_my_id), MY_INT_MAX_SIGNAL(sign_threshold) {  }
 
-    id getId() {                                                    // Возвращает id данного узла
+    // Возвращает id данного узла
+    id getId() const {
         return my_id;
     }
 
-    std::vector<id> getNodeInNet() {                                // Возвращает очередь <id, уровень сигнала для узлов, которые он видит>
-        std::vector<id> ulala;
+    // Возвращает вектор <id, уровень сигнала для узлов, которые он видит>
+    std::vector <id> getNodeInNet() {
+        std::vector <id> ulala;
 
         id start = all_stren.front();
 
         do {
-           ulala.push_back( all_stren.front());
-           all_stren.push(all_stren.front());
-           all_stren.pop();
+            ulala.push_back( all_stren.front());
+            all_stren.push(all_stren.front());
+            all_stren.pop();
         } while (start != all_stren.front());
 
         return ulala;
     }
 
-    void clean(){
+    void clean() {
         while (!all_stren.empty()) all_stren.pop();
         dict.clear();
         next_node.clear();
         G.clear();
-        index==0;
+        index==0;           //Нужно!!, не надо мне тут
         indicator = -1;
         first_node = -1;
         check_first_node = false;
         check_resize = false;
     }
 
-    id getIdToReconf() {                                            //Если была замечена отвалившаяся/добавившаяся нода, вызываем
-        id start = all_stren.front();
+    //Если была замечена отвалившаяся/добавившаяся нода, вызываем
+    id getIdToReconf() {
+        //id start = all_stren.front();
 
         if (indicator != all_stren.front() and indicator != -1) {
             id hlp = all_stren.front();
@@ -114,9 +118,7 @@ public:
         } else return -1;
     }
 
-    void addNode(id new_node){
-//        if (all_stren == nullptr) all_stren = new std::queue<id>;
-
+    void addNode(id new_node) {
         all_stren.push(new_node);
     }
 
@@ -132,7 +134,8 @@ public:
         } while (hlp != hlp2);
     }
 
-    void putAnswer(id last_node) {                                  // После рассылки придет ответ от каждой "Живой ноды"
+    // После рассылки придет ответ от каждой "Живой ноды"
+    void putAnswer(id last_node) {
 //        //std::cout<<last_id<<" "<<std::endl;
         //if (all_stren == nullptr) all_stren = new std::queue<int>;
         all_stren.push(last_node);                               // Записываем порядок
@@ -144,9 +147,15 @@ public:
         //std::cout<<last_id<<" "<<std::endl;
     }
 
-    id getNextToSendRequest() {                                     //Те ноды, что прислали ответ на переконфигурацию в порядке получения их ответов получают запрос на отправку уровеня сигнала
-        // Узел n, получил запрос, померил уровень сигнала(set_sig_stren)
-        // Отослал в синхронном режиме до всех узлов, Master-узел(узел затеявший переконфигурацию) получает список последним
+
+
+    // Те ноды, что прислали ответ на переконфигурацию в порядке
+    //   получения их ответов получают запрос на отправку уровеня сигнала
+    // Узел n, получил запрос, померил уровень сигнала(set_sig_stren)
+    // Отослал в синхронном режиме до всех узлов, Master-узел(узел
+    //   затеявший переконфигурацию) получает список последним
+    id getNextToSendRequest() {
+
 
         if (!check_first_node) {
             first_node = all_stren.front();
@@ -164,34 +173,42 @@ public:
         } else return -1;
     }
 
-    void setSignStren(std::vector<std::pair<id, int>> *idAndSignStren,
-                      id node_id = -1) {                            //заполняет (очередь id, уровень сигнала)  для узлов, от
-        if (-1 == node_id) node_id = my_id;                         //которых пришло соотвествуюшее сообщение, в том числе и от нашего узла(my_id)
+    // Заполняет (очередь id, уровень сигнала)  для узлов, от которых
+    //   пришло соотвествуюшее сообщение, в том числе и от нашего узла(my_id)
+    void setSignStren(std::vector<std::pair<id, sgnlstr>> *idAndSignStren, id node_id = -1) {
+        if (-1 == node_id) node_id = my_id;
         if (!check_resize) {
             G.resize(index);
             check_resize = true;
         }
 
-        for (auto &i: *idAndSignStren) {
-            i.first = dict[i.first];
+        auto *vertexAndSignStren = new std::vector<std::pair<vertex, sgnlstr>> (index);
+
+        for (int i=0; i< idAndSignStren->size(); ++i) {
+            vertexAndSignStren->at(i).first = dict[idAndSignStren->at(i).first];
+            vertexAndSignStren->at(i).second = idAndSignStren->at(i).second;
         }
-        G[dict[node_id]] = idAndSignStren;
+
+        G[dict[node_id]] = vertexAndSignStren; //reinterpret_cast<std::vector<std::pair<vertex , sgnlstr>> *>(idAndSignStren);
     }
 
     void searchOptimal() {
-        int st=dict[my_id];
+        vertex st = dict[my_id];
         int n = G.size();
 
-//        for(auto i: G){
-//            for(auto j:*i){
-//                std::cout <<"( "+ std::to_string(j.first) + " : "+ std::to_string(j.second)+" ) ";
-//            }
-//            std::cout <<    std::endl;
-//        }
+        //for(auto i: G){
+        //    for(auto j:*i){
+        //        std::cout <<"( "+ std::to_string(j.first) + " : "+ std::to_string(j.second)+" ) ";
+        //    }
+        //    std::cout <<    std::endl;
+        //}
 
-        std::vector<int> D(n, MY_INT_MAX),  p(n);
+
+        std::vector<vertex> D(n, MY_INT_MAX),  p(n);
         D[st] = 0;
         std::vector<char> u(n);
+
+
         for (int i=0; i<n; ++i) {
             int v = -1;
             for (int j=0; j<n; ++j)
@@ -209,9 +226,11 @@ public:
                     D[to] = D[v] + len;
                     p[to] = v;
                 }*/
-                int to = G[v]->at(j).first,
-                    len = G[v]->at(j).second;
+                vertex to = G[v]->at(j).first;
+                sgnlstr len = G[v]->at(j).second;
+
                 if (len>=MY_INT_MAX_SIGNAL) continue;
+
                 if (D[v] + len < D[to]) {
                     D[to] = D[v] + len;
                     p[to] = v;
@@ -228,7 +247,7 @@ public:
 
             std::reverse(path.begin(), path.end());
             //for (int j = 0; j < path.size(); ++j) std::cout << search_map(&dict, path[j]) << " -> ";                  //todo DEBUG
-//            std::cout << "#" << D[i] << std::endl;
+            //std::cout << "#" << D[i] << std::endl;
             if (D[i]<MY_INT_MAX) {
                 next_node[search_map(&dict, i)] = search_map(&dict, path[1]);
             } else {
@@ -252,4 +271,4 @@ public:
     }
 };
 
-#endif //ALG_CONNECT_H
+//#endif //ALG_CONNECT_H
