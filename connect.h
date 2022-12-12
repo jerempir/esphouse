@@ -1,4 +1,4 @@
-/* v:1.01
+/* v:1.02
  * ☠☠☠ ACHTUNG MINES ☠☠☠
  *
  * C Nuestro que estas en la Memoria,
@@ -34,13 +34,13 @@ class connect {
     sgnlstr MY_INT_MAX_SIGNAL = 70;
     int MY_INT_MAX = 1000000;
 
-    id my_id;                                                       // Задание id
+    id my_id = 0;                                                       // Задание id
     std::queue <id> all_stren;                                      // Все узлы, доступные в сети
     //std::queue <id> all_stren_help;                               // Все узлы, доступные в сети
     std::map <id, vertex> dict;                                     // Ассоциативный контейнер для id и номера вершины для поиска в глубину
     std::map <id, id> next_node;                                    // Ассоциативный контейнер для конечной вершины и вершины, следующей в пути(самый полезный массив)
 
-    id indicator = -1;
+    id indicator = 0;
 
     vertex index = 0;                                               // количество вершин (оно же - максимальный индекс вершины
     id first_node = -1;                                             // Вспомонательная пеменная, обозгначающая первый элемент в очереди (флаг остановки)
@@ -86,8 +86,8 @@ public:
         dict.clear();
         next_node.clear();
         G.clear();
-        index==0;           //Нужно!!, не надо мне тут
-        indicator = -1;
+        index = 0;           //Нужно!!, не надо мне тут
+        indicator = 0;
         first_node = -1;
         check_first_node = false;
         check_resize = false;
@@ -97,13 +97,13 @@ public:
     id getIdToReconf() {
         //id start = all_stren.front();
 
-        if (indicator != all_stren.front() and indicator != -1) {
+        if (indicator != all_stren.front() and indicator != 0) {
             id hlp = all_stren.front();
             all_stren.push(all_stren.front());
             all_stren.pop();
             return hlp;                                             //то разослать информацию о переконфигурации сети всем нодам в базе
         } else if (indicator == all_stren.front()){
-            indicator = -1;
+            indicator = 0;
         } else{
             indicator = all_stren.front();
             all_stren.push(indicator);
@@ -175,8 +175,7 @@ public:
 
     // Заполняет (очередь id, уровень сигнала)  для узлов, от которых
     //   пришло соотвествуюшее сообщение, в том числе и от нашего узла(my_id)
-    void setSignStren(std::vector<std::pair<id, sgnlstr>> *idAndSignStren, id node_id = -1) {
-        if (-1 == node_id) node_id = my_id;
+    void setSignStren(std::vector<std::pair<id, sgnlstr>> *idAndSignStren, id node_id) {
         if (!check_resize) {
             G.resize(index);
             check_resize = true;
@@ -184,7 +183,7 @@ public:
 
         auto *vertexAndSignStren = new std::vector<std::pair<vertex, sgnlstr>> (index);
 
-        for (int i=0; i< idAndSignStren->size(); ++i) {
+        for (unsigned int i=0; i< idAndSignStren->size(); ++i) {
             vertexAndSignStren->at(i).first = dict[idAndSignStren->at(i).first];
             vertexAndSignStren->at(i).second = idAndSignStren->at(i).second;
         }
