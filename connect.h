@@ -1,4 +1,4 @@
-/* v:1.04
+/* v:1.05
  * ☠☠☠ ACHTUNG MINES ☠☠☠
  *
  * C Nuestro que estas en la Memoria,
@@ -31,8 +31,12 @@ using vertex = int;
 //Ассоциативный контейнер для id и номера вершины для поиска в глубину далее dict
 
 class connect {
-    sgnlstr MY_INT_MAX_SIGNAL;
+public:
+    connect(id _my_id, sgnlstr sign_threshold): my_id(_my_id), MY_INT_MAX_SIGNAL(sign_threshold) {  }
+
+private:
     id my_id;                                                       // Задание id
+    sgnlstr MY_INT_MAX_SIGNAL;
 
     int MY_INT_MAX = 1000000;
 
@@ -44,13 +48,14 @@ class connect {
     id indicator = 0;
 
     vertex index = 0;                                               // количество вершин (оно же - максимальный индекс вершины
-//    id first_node = -1;                                             // Вспомонательная пеменная, обозгначающая первый элемент в очереди (флаг остановки)
+//    id first_node = -1;                                           // Вспомонательная пеменная, обозгначающая первый элемент в очереди (флаг остановки)
 //    bool check_first_node = false;
 
     //std::vector <int> visited;
 
     std::vector< std::vector <std::pair<vertex, sgnlstr>> *> G;         // (id, sig_stren)
     bool check_resize = false;
+
 
     static id search_map(std::map<id, vertex> *my_map, vertex vertex_to_find){
         for (auto & it : *my_map)
@@ -60,8 +65,6 @@ class connect {
     }
 
 public:
-    connect(id _my_id, sgnlstr sign_threshold): my_id(_my_id), MY_INT_MAX_SIGNAL(sign_threshold) {  }
-
     // Возвращает id данного узла
     id getId() const {
         return my_id;
@@ -93,7 +96,7 @@ public:
         G.clear();
         index = 0;                                                                  //Нужно!!, не надо мне тут
         indicator = -1;                                                             //TODO как можно хранить -1 в id
-        //first_node = -1;                                                            //TODO как можно хранить -1 в id
+        //first_node = -1;                                                          //TODO как можно хранить -1 в id
         //check_first_node = false;
         check_resize = false;
     }
@@ -103,20 +106,20 @@ public:
     id getIdToReconf() {
 
         // indicator не начало и индикатор не пуст
-        if (indicator != all_stren.front() and indicator != -1) {
+        if (indicator != all_stren.front() and indicator != -1) {                   //TODO как можно сравнивать -1 с id
             id hlp = all_stren.front();
             all_stren.push(all_stren.front());
             all_stren.pop();
             return hlp;
         }
 
-        // indicator указывает на начало ( возможно если был пройден круг
+            // indicator указывает на начало ( возможно если был пройден круг
         else if (indicator == all_stren.front()) {
             indicator = -1;
             return -1;
         }
 
-        // indicator пустой -> начать заполнение
+            // indicator пустой -> начать заполнение
         else {
             indicator = all_stren.front();
             all_stren.push(indicator);
@@ -160,7 +163,7 @@ public:
         if (index==0) {dict[my_id] = 0; index++;}
         dict[last_node] = index++;                                  // Заносим в dict новую ассоциацию
         // [[id005: 0], [id012: 1], [id003: 2], [id001: 3]]         // Для дальнейшей удобной работой в поиске в глубину
-    //    check_first_node = false;                                   // Первая не выбрана, процесс get_priority не запущен
+        //    check_first_node = false;                                   // Первая не выбрана, процесс get_priority не запущен
     }
 
 
@@ -228,9 +231,9 @@ public:
         std::vector<char> u(n);
 
 
-        for (int i=0; i<n; ++i) {
+        for (size_t i=0; i<n; ++i) {                                    // TODO Насколько разумно использование size_t
             int v = -1;
-            for (int j=0; j<n; ++j)
+            for (size_t j=0; j<n; ++j)
                 if (!u[j] && (v == -1 || D[j] < D[v]))
                     v = j;
             if (D[v] == MY_INT_MAX)
@@ -258,7 +261,8 @@ public:
         }
 
         std::vector<int> path;
-        for(int i=1; i<n; ++i) {
+
+        for(size_t i=1; i<n; ++i) {
             path.clear();
             for (int v = i; v != st; v = p[v])
                 path.push_back(v);
