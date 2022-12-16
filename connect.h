@@ -1,4 +1,4 @@
-/* v:1.03
+/* v:1.04
  * ☠☠☠ ACHTUNG MINES ☠☠☠
  *
  * C Nuestro que estas en la Memoria,
@@ -44,8 +44,8 @@ class connect {
     id indicator = 0;
 
     vertex index = 0;                                               // количество вершин (оно же - максимальный индекс вершины
-    id first_node = -1;                                             // Вспомонательная пеменная, обозгначающая первый элемент в очереди (флаг остановки)
-    bool check_first_node = false;
+//    id first_node = -1;                                             // Вспомонательная пеменная, обозгначающая первый элемент в очереди (флаг остановки)
+//    bool check_first_node = false;
 
     //std::vector <int> visited;
 
@@ -67,11 +67,11 @@ public:
         return my_id;
     }
 
-    // Возвращает вектор <id, уровень сигнала для узлов, которые он видит>
+    // Возвращает вектор из id, список всех живых на момент вызова узлов в сети
     std::vector <id> getNodeInNet() {
         std::vector <id> ulala(0, 0);
 
-        if (all_stren.size()) {
+        if (!all_stren.empty()) {
             id start = all_stren.front();
 
             do {
@@ -84,70 +84,83 @@ public:
         return ulala;
     }
 
+    // Очистка массивов, переменных для очередной переконфигурации
+    // За этим вызовом должна последовать переконфигурация сети
     void clean() {
         while (!all_stren.empty()) all_stren.pop();
         dict.clear();
         next_node.clear();
         G.clear();
-        index = 0;           //Нужно!!, не надо мне тут
-        indicator = 0;
-        first_node = -1;
-        check_first_node = false;
+        index = 0;                                                                  //Нужно!!, не надо мне тут
+        indicator = -1;                                                             //TODO как можно хранить -1 в id
+        //first_node = -1;                                                            //TODO как можно хранить -1 в id
+        //check_first_node = false;
         check_resize = false;
     }
 
-    //Если была замечена отвалившаяся/добавившаяся нода, вызываем
+    // На каждом вызове возвращает новый элемент из списка всех живых узлов (нужно для этапа 2.1)
+    // Если список живых узлов закончился, то вернуть -1                            //TODO как можно возвращать -1 в id
     id getIdToReconf() {
-        //id start = all_stren.front();
 
-        if (indicator != all_stren.front() and indicator != 0) {
+        // indicator не начало и индикатор не пуст
+        if (indicator != all_stren.front() and indicator != -1) {
             id hlp = all_stren.front();
             all_stren.push(all_stren.front());
             all_stren.pop();
-            return hlp;                                             //то разослать информацию о переконфигурации сети всем нодам в базе
-        } else if (indicator == all_stren.front()){
-            indicator = 0;
-        } else{
+            return hlp;
+        }
+
+        // indicator указывает на начало ( возможно если был пройден круг
+        else if (indicator == all_stren.front()) {
+            indicator = -1;
+            return -1;
+        }
+
+        // indicator пустой -> начать заполнение
+        else {
             indicator = all_stren.front();
             all_stren.push(indicator);
             all_stren.pop();
             return indicator;
         }
-
-        if (all_stren.empty()) {
-            id hlp = all_stren.front();
-            all_stren.pop();
-            return hlp;                                             //то разослать информацию о переконфигурации сети всем нодам в базе
-        } else return -1;
     }
 
+    // Добавляется новый узел к узлам в сети
+    // За этим вызовом должна последовать функция clean
+    //    и переконфигурация
     void addNode(id new_node) {
         all_stren.push(new_node);
     }
 
+    // Удаляет узел из узлов в сети
+    // За этим вызовом должна последовать функция clean
+    //    и переконфигурация
     void rmNode(id node){
         id hlp = all_stren.front();
-        id hlp2= hlp;
+//        if (hlp == node) return;
+
         do {
-            if (hlp2 != node) {
-                all_stren.push(hlp2);
+            if (all_stren.front() != node) {    // Если не наш - закинуть в конец, удалить в начале
+                all_stren.push(all_stren.front());
+                all_stren.pop();
+            } else {                            // Если наш - удалить в начале, выйти
+                all_stren.pop();
+                return;
             }
-            all_stren.pop();
-            hlp2 = all_stren.front();
-        } while (hlp != hlp2);
+        } while (hlp != all_stren.front());
+
+        //В списке не оказалось, где-то допущена ошибка
     }
 
+    // Функция для записи всех узлов, откликнувшихся на запрос 1.2
     // После рассылки придет ответ от каждой "Живой ноды"
     void putAnswer(id last_node) {
-//        //std::cout<<last_id<<" "<<std::endl;
-        //if (all_stren == nullptr) all_stren = new std::queue<int>;
         all_stren.push(last_node);                               // Записываем порядок
 
         if (index==0) {dict[my_id] = 0; index++;}
         dict[last_node] = index++;                                  // Заносим в dict новую ассоциацию
         // [[id005: 0], [id012: 1], [id003: 2], [id001: 3]]         // Для дальнейшей удобной работой в поиске в глубину
-        check_first_node = false;                                   // Первая не выбрана, процесс get_priority не запущен
-        //std::cout<<last_id<<" "<<std::endl;
+    //    check_first_node = false;                                   // Первая не выбрана, процесс get_priority не запущен
     }
 
 
@@ -157,7 +170,8 @@ public:
     // Узел n, получил запрос, померил уровень сигнала(set_sig_stren)
     // Отослал в синхронном режиме до всех узлов, Master-узел(узел
     //   затеявший переконфигурацию) получает список последним
-    id getNextToSendRequest() {
+/*    id getNextToSendRequest() {
+
 
         if (!check_first_node) {
             first_node = all_stren.front();
@@ -174,6 +188,7 @@ public:
             return help_node;
         } else return -1;
     }
+*/
 
     // Заполняет (очередь id, уровень сигнала)  для узлов, от которых
     //   пришло соотвествуюшее сообщение, в том числе и от нашего узла(my_id)
@@ -193,9 +208,12 @@ public:
         G[dict[node_id]] = vertexAndSignStren; //reinterpret_cast<std::vector<std::pair<vertex , sgnlstr>> *>(idAndSignStren);
     }
 
+
+    // Основная функция
+    // Ищет оптимальный путь для всех узлов
     void searchOptimal() {
         vertex st = dict[my_id];
-        int n = G.size();
+        unsigned int n = G.size();
 
         //for(auto i: G){
         //    for(auto j:*i){
@@ -267,7 +285,6 @@ public:
     }
 
     id getNextNode(id node){
-        //id nn = next_node[node];
         return next_node[node];
     }
 };
