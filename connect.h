@@ -1,4 +1,4 @@
-/* v:1.05
+/* v:1.06
  * ☠☠☠ ACHTUNG MINES ☠☠☠
  *
  * C Nuestro que estas en la Memoria,
@@ -69,6 +69,7 @@ public:
     id getId() const {
         return my_id;
     }
+    
 
     // Возвращает вектор из id, список всех живых на момент вызова узлов в сети
     std::vector <id> getNodeInNet() {
@@ -93,6 +94,7 @@ public:
         while (!all_stren.empty()) all_stren.pop();
         dict.clear();
         next_node.clear();
+        for (auto &i:G) delete i;                                                   // TODO проверить работоспособность!
         G.clear();
         index = 0;                                                                  //Нужно!!, не надо мне тут
         indicator = -1;                                                             //TODO как можно хранить -1 в id
@@ -106,20 +108,20 @@ public:
     id getIdToReconf() {
 
         // indicator не начало и индикатор не пуст
-        if (indicator != all_stren.front() and indicator != -1) {                   //TODO как можно сравнивать -1 с id
+        if (indicator != all_stren.front() and indicator != (id)-1) {                   //TODO как можно сравнивать -1 с id
             id hlp = all_stren.front();
             all_stren.push(all_stren.front());
             all_stren.pop();
             return hlp;
         }
 
-            // indicator указывает на начало ( возможно если был пройден круг
+        // indicator указывает на начало ( возможно если был пройден круг
         else if (indicator == all_stren.front()) {
             indicator = -1;
             return -1;
         }
 
-            // indicator пустой -> начать заполнение
+        // indicator пустой -> начать заполнение
         else {
             indicator = all_stren.front();
             all_stren.push(indicator);
@@ -158,12 +160,28 @@ public:
     // Функция для записи всех узлов, откликнувшихся на запрос 1.2
     // После рассылки придет ответ от каждой "Живой ноды"
     void putAnswer(id last_node) {
+        Serial.print("ХОЧУ ДОБАВИТЬ !!! ");
+        Serial.println(last_node);
+        
+        if (!all_stren.empty()) {
+            auto strt = all_stren.front();
+            all_stren.push(strt); all_stren.pop();
+            
+            if (strt == last_node){Serial.println("!уже добавил"); return;}
+            
+            while(strt != all_stren.front() and last_node != all_stren.front()) {
+                all_stren.push(all_stren.front());
+                all_stren.pop();
+            }
+            if (last_node == all_stren.front()){Serial.println("!уже добавил"); return;} 
+        }
+        
         all_stren.push(last_node);                               // Записываем порядок
 
         if (index==0) {dict[my_id] = 0; index++;}
         dict[last_node] = index++;                                  // Заносим в dict новую ассоциацию
         // [[id005: 0], [id012: 1], [id003: 2], [id001: 3]]         // Для дальнейшей удобной работой в поиске в глубину
-        //    check_first_node = false;                                   // Первая не выбрана, процесс get_priority не запущен
+    //    check_first_node = false;                                   // Первая не выбрана, процесс get_priority не запущен
     }
 
 
@@ -201,14 +219,40 @@ public:
             check_resize = true;
         }
 
-        auto *vertexAndSignStren = new std::vector<std::pair<vertex, sgnlstr>> (index);
+        auto *vertexAndSignStren = new std::vector<std::pair<vertex, sgnlstr>> ();
 
         for (unsigned int i=0; i< idAndSignStren->size(); ++i) {
-            vertexAndSignStren->at(i).first = dict[idAndSignStren->at(i).first];
-            vertexAndSignStren->at(i).second = idAndSignStren->at(i).second;
+            vertexAndSignStren->push_back(std::make_pair( dict[idAndSignStren->at(i).first], idAndSignStren->at(i).second));
         }
 
         G[dict[node_id]] = vertexAndSignStren; //reinterpret_cast<std::vector<std::pair<vertex , sgnlstr>> *>(idAndSignStren);
+
+        //for (auto &i:G){
+            for(auto &j:*G[dict[node_id]]){
+                Serial.print(j.first);
+                Serial.print("-->");
+                Serial.println(j.second);
+                
+            }
+        //}
+    }
+
+    std::vector<std::pair<id, sgnlstr>> getSignStren(id node_id){
+        std::vector<std::pair<id, sgnlstr>> idAndSignStren (G[dict[node_id]]->size());
+        
+        //idAndSignStren = (G[dict[node_id]]);
+
+        //search_map(&dict, i)
+        for (unsigned int i=0; i< idAndSignStren.size(); ++i) {
+            idAndSignStren.at(i).first = search_map(&dict, G[dict[node_id]]->at(i).first);     //Возвращаем vertex в id
+            idAndSignStren.at(i).second = G[dict[node_id]]->at(i).second;     //Возвращаем vertex в id
+            //Serial.print(idAndSignStren.at(i).first);
+            //Serial.print("   ");
+            //Serial.print(idAndSignStren.at(i).second);
+        }
+
+//        next_node[search_map(&dict, i)]
+        return idAndSignStren;
     }
 
 
@@ -261,7 +305,7 @@ public:
         }
 
         std::vector<int> path;
-
+        
         for(size_t i=1; i<n; ++i) {
             path.clear();
             for (int v = i; v != st; v = p[v])
