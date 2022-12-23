@@ -5,8 +5,31 @@
 #include <connect.h>
 #include <json.h>
 #include <string>
+#define MESSAGE_BUFFER_SIZE 230
+
+//###############################################################################################
+//###############################################################################################
+//###############################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+//###############################################################################################
+//###############################################################################################
+//###############################################################################################
+
+
 
 unsigned int ii = 0; // Зачем оно?
+
 
 bool FLAG_11 = false,      // Мне пришел запрос на подключение
     FLAG_12 = false,       // Мне пришло сообщение-запрос о моей "живости"
@@ -31,6 +54,18 @@ std::vector<id> AVALIABLE;                           // черт чтобы ра
 
 connect *My_con; // Теперь уровень сигнала можно настроить при создании
 
+
+typedef struct struct_message {
+  uint64_t from;                      // id
+  uint64_t to;                        // id
+  uint8_t transid;                    // message_id ( random(256) )
+  uint8_t message_type;               // search in Miro
+  char buff[MESSAGE_BUFFER_SIZE];     // message
+} struct_message;
+
+struct_message *LastMessageArray = nullptr; // последнее принятое сообщение
+
+
 void sendToArraySS(id to);
 void scanAddMy();
 
@@ -47,8 +82,7 @@ std::vector<uint8_t> idToArray(uint64_t id)
   return MacAddress;
 }
 
-uint64_t ArrayToID(uint8_t MacAddress[6])
-{
+uint64_t ArrayToID(uint8_t MacAddress[6]) {
   return (((((uint64_t)(MacAddress[0] * 256) + MacAddress[1]) * 256 + MacAddress[2]) * 256 + MacAddress[3]) * 256 + MacAddress[4]) * 256 + MacAddress[5];
 }
 
@@ -57,23 +91,9 @@ String ArrayMACToString(uint8_t MacAddress[6])
   return String(MacAddress[0]) + "." + String(MacAddress[1]) + "." + String(MacAddress[2]) + "." + String(MacAddress[3]) + "." + String(MacAddress[4]) + "." + String(MacAddress[5]);
 }
 
-typedef struct struct_message
-{
-  uint64_t from;        // id
-  uint64_t to;          // id
-  uint8_t transid;      // message_id ( random(256) )
-  uint8_t message_type; // search in Miro
-  char buff[100];       // message
-  //  std::vector<uint64_t> allnode;  // all node id
-  //  std::vector<std::pair<uint64, uint8_t>> nodeRssi;
-} struct_message;
-
-struct_message *LastMessageArray = nullptr; // последнее принятое сообщение
-
 // Возвращает позицию id в массиве VectorID
 // Если такого нет, то вернет -1
-int8 getIndex(std::vector<uint64_t> VectorID, uint64_t id)
-{
+int8 getIndex(std::vector<uint64_t> VectorID, uint64_t id) {
   auto it = std::find(VectorID.begin(), VectorID.end(), id);
 
   // If element was found
@@ -442,8 +462,8 @@ void setup()
   }
 }
 
-void loop()
-{
+void loop() {
+//  Serial.println(ESP_NOW_MAX_DATA_LEN);
   if (FLAG_not_for_me)
   {
     FLAG_not_for_me = false;
@@ -510,7 +530,7 @@ void loop()
     Serial.print("     ");
     Serial.println(String(LastMessageArray->buff));
 
-    StaticJsonDocument<200> listNodeNet;
+    StaticJsonDocument<MESSAGE_BUFFER_SIZE> listNodeNet;
     DeserializationError error = deserializeJson(listNodeNet, LastMessageArray->buff);
 
     if (error)
@@ -550,14 +570,59 @@ void loop()
 
     // TODO сделать добавление и поиск оптимального пути
 
+    StaticJsonDocument<MESSAGE_BUFFER_SIZE> NodeConectArray;
+    DeserializationError error = deserializeJson(NodeConectArray, LastMessageArray->buff);
+
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.f_str());
+      return;
+    }
+
+    //auto AllNodeInNet = listNodeNet["live_node"];
+    for (JsonPair iNode : NodeConectArray.as<JsonObject>()) {
+      Serial.println(iNode.key().c_str());
+      auto NodeStrArray = iNode.value();
+      //for (auto imessage: NodeStrArray.as<JsonObject>()) {
+      //  Serial.println("      " + String(imessage.key().c_str()));
+      //}
+      auto IDs = NodeStrArray.as<JsonObject>()["IDs"];//NodeStrArray.as<JsonObject>()[0].value();
+      auto SingStr = NodeStrArray.as<JsonObject>()["SingStr"];
+      
+
+      std::vector<std::pair<id, sgnlstr>> Pretty_vector(IDs.size(), std::pair<id, sgnlstr>(0, 0)); // = listNodeNet["SingStr"];
+
+      for (unsigned int i = 0; i < IDs.size(); ++i) {
+        Pretty_vector[i].first = IDs[i];
+        Pretty_vector[i].second = SingStr[i];
+      }
+
+      My_con->setSignStren(&Pretty_vector, String(iNode.key().c_str()).toInt()); // TODO разбраться в этом мракобесие
+      
+      
+      //Serial.println();
+      //Serial.println();
+    }
+
+//    for (unsigned int i = 0; i < AllNodeInNet.size(); ++i)
+//    {
+//      if (AllNodeInNet[i] != My_con->getId())
+//        My_con->putAnswer(AllNodeInNet[i]);
+
+      //      Serial.print("      ");
+      //      Serial.println(ArrayMACToString(idToArray(AllNodeInNet[i]).data()));
+//    }
+
+
+
     delay(500);
     esp_now_send(idToArray(LastReceivedNodeId).data(), (uint8_t *)&ok_message, sizeof(ok_message));
     delay(500);
     FLAG_all_good = true;
+    My_con->searchOptimal();
   }
 
-  if (FLAG_11)
-  {
+  if (FLAG_11) {
     FLAG_11 = false;
     FLAG_i_am_main = true;
     scanNetwork(WiFi.scanNetworks(false, true));
@@ -579,8 +644,7 @@ void loop()
     // если есть ответ, то добавляем его в список живых узлов
     struct_message message_to_start;
 
-    for (auto iter_node : all_node)
-    {
+    for (auto iter_node : all_node) {
       if (iter_node == My_con->getId())
         continue; // TODO в правильной реализации - костыль
 
@@ -595,14 +659,12 @@ void loop()
       Serial.println(ArrayMACToString(idToArray(iter_node).data()));
 
       Serial.println("        Отправляем через:");
-      for (auto neibour_node : all_node)
-      { // Идём по всем платам ибо не знаем сигнал соседей. Есть начальная точка и конечная.
+      for (auto neibour_node : all_node) { // Идём по всем платам ибо не знаем сигнал соседей. Есть начальная точка и конечная.
         bool ulala = false;
         for (auto ids : AVALIABLE)
           if (ids == neibour_node)
             ulala = true;
-        if (neibour_node == My_con->getId() or ulala == false)
-        {
+        if (neibour_node == My_con->getId() or ulala == false) {
           Serial.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@отлов1");
           continue;
         }
@@ -650,7 +712,7 @@ void loop()
       Serial.print("    Отправляю массив id для: ");
       Serial.println(ArrayMACToString(idToArray(iter_node).data()));
 
-      StaticJsonDocument<200> My_Array_of_live_node;
+      StaticJsonDocument<MESSAGE_BUFFER_SIZE> My_Array_of_live_node;
       JsonArray data = My_Array_of_live_node.createNestedArray("live_node");
 
       for (auto node_to_data : live_nodes) {
@@ -661,7 +723,7 @@ void loop()
       String output;
       serializeJson(My_Array_of_live_node, output);
       //Serial.println(output);
-      strncpy(message_array.buff, output.c_str(), sizeof(message_array.buff));
+      strncpy(message_array.buff, output.c_str(), MESSAGE_BUFFER_SIZE); //sizeof(message_array.buff)
 
       Serial.print("    ");
       Serial.println(output);
@@ -700,11 +762,10 @@ void loop()
         Serial.print("     ");
         Serial.println(String(LastMessageArray->buff));
 
-        StaticJsonDocument<200> listNodeNet;
+        StaticJsonDocument<MESSAGE_BUFFER_SIZE> listNodeNet;
         DeserializationError error = deserializeJson(listNodeNet, String(LastMessageArray->buff));
 
-        if (error)
-        {
+        if (error) {
           Serial.println(F("deserializeJson() failed: "));
           Serial.println(error.f_str());
           return;
@@ -714,8 +775,7 @@ void loop()
         auto SingStr = listNodeNet["SingStr"];
         std::vector<std::pair<id, sgnlstr>> Pretty_vector(IDs.size(), std::pair<id, sgnlstr>(0, 0)); // = listNodeNet["SingStr"];
 
-        for (unsigned int i = 0; i < IDs.size(); ++i)
-        {
+        for (unsigned int i = 0; i < IDs.size(); ++i) {
           Pretty_vector[i].first = IDs[i];
           Pretty_vector[i].second = SingStr[i];
         }
@@ -743,7 +803,7 @@ void loop()
     live_nodes = My_con->getNodeInNet(); // считываем очередной узел у которого должны узнать уровень сигнала до всех смежных узлов
     live_nodes.push_back(My_con->getId());
 
-    StaticJsonDocument <200> listG;                                           // TODO разбраться в этом мракобесие
+    StaticJsonDocument <MESSAGE_BUFFER_SIZE> listG;                                           // TODO разбраться в этом мракобесие
     //JsonArray myGindex = listG.createNestedArray("G");
 
     for (auto &iter_node : live_nodes) {
@@ -764,7 +824,7 @@ void loop()
     
     Serial.println(output);
     struct_message sendG;
-    strncpy(sendG.buff, output.c_str(), sizeof(sendG.buff));
+    strncpy(sendG.buff, output.c_str(), MESSAGE_BUFFER_SIZE);  //sizeof(sendG.buff)
     sendG.from = My_con->getId();
     sendG.message_type = 31;
 
@@ -799,9 +859,11 @@ void loop()
         while (1) delay(1);
       }
     }
+    
     if (counter_of_good == My_con->getNodeInNet().size()){
       FLAG_all_good = true;
       FLAG_i_am_main = false;
+      My_con->searchOptimal();
     }
   }
 
@@ -831,7 +893,7 @@ void loop()
 
 String idSSToString(std::vector<std::pair<id, sgnlstr>> MyArray)
 {
-  StaticJsonDocument<200> listNodeNetAndSignStr;
+  StaticJsonDocument<MESSAGE_BUFFER_SIZE> listNodeNetAndSignStr;
   JsonArray SingStr = listNodeNetAndSignStr.createNestedArray("SingStr");
   JsonArray IDs = listNodeNetAndSignStr.createNestedArray("IDs");
 
@@ -867,7 +929,7 @@ void sendToArraySS (id to) {
   
   Serial.println("Устройства просканированы, начинаю рассылать ПРАВИЛЬНОМУ через всех доступных)");
   Serial.println(output);
-  output.toCharArray(send.buff, 100);
+  output.toCharArray(send.buff, MESSAGE_BUFFER_SIZE);
 
   std::vector<id> AvaliableNodes = My_con->getNodeInNet(); //  getNodeInNet            // TODO Разобраться с AllAvaliableNodeID
   /*
