@@ -1,4 +1,4 @@
-/* v:1.06
+/* v:1.07
  * ☠☠☠ ACHTUNG MINES ☠☠☠
  *
  * C Nuestro que estas en la Memoria,
