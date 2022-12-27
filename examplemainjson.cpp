@@ -43,13 +43,14 @@ int main() {
 
 
     json myjson(jsontxt);
-    myjson.setNodeid(id2);  //Указываем какой id нас интересует
-    if (true) { //Проверка на существование событий myjson.getEventnum()
+    myjson.setNodeid(id1);  //Указываем какой id нас интересует
+    if (myjson.getEventnum()) { //Проверка на существование событий
         auto i = "1";
         cout << myjson.getName(i) << endl;
         cout << myjson.getCond(i) << endl;
         cout << myjson.getFunc(i) << endl;
     }
+
 
     return 0;
 }

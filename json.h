@@ -5,7 +5,7 @@
 #ifndef UNTITLED255_JSON_H
 #define UNTITLED255_JSON_H
 #include "ArduinoJson.h"
-
+#include <iostream>
 class json {
 public:
 
@@ -22,8 +22,12 @@ public:
 
     // Getter проверка количества событий
     uint8_t getEventnum() {
-        uint8_t num;
-        /////DO//////
+        uint8_t num = 0;
+        auto myarraystring = doc[node_id];
+        for(auto iNode:myarraystring.as<JsonObject>()){
+            num = num+1;
+            std::cout<<iNode.key()<<" event"<<std::endl;
+        }
         return num;
     }
 
